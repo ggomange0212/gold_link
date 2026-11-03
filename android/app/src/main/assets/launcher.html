@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>뮤뮤 링크</title>
+<style>
+:root{--bg:#0a0b0d;--card:#14161a;--line:#24272d;--fg:#eef0f3;--mut:#9aa1ab;--acc:#3d8bff;--bad:#ff6b6b;--ok:#36d17a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif}
+main{max-width:420px;margin:0 auto;padding:48px 22px 32px;display:flex;flex-direction:column;gap:18px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;border-radius:13px;background:var(--acc);display:flex;align-items:center;justify-content:center}
+.logo i{width:0;height:0;border-left:15px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:4px}
+h1{margin:0;font-size:24px}.sub{margin:2px 0 0;color:var(--mut);font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:12px}
+label{font-size:13px;color:var(--mut)}
+input{width:100%;font:inherit;font-size:19px;padding:14px;border-radius:12px;border:1px solid var(--line);background:#0e1013;color:var(--fg);letter-spacing:2px}
+input::placeholder{letter-spacing:0;color:#5c626b;font-size:15px}
+#code{text-transform:uppercase}
+.chk{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mut)}
+.chk input{width:20px;height:20px;padding:0}
+button{font:inherit;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:600;background:var(--acc);color:#fff}
+button:disabled{opacity:.5}
+button.ghost{background:transparent;color:var(--mut);font-weight:400;font-size:14px;padding:8px}
+#msg{min-height:20px;font-size:14px;color:var(--mut);text-align:center;line-height:1.5}
+#msg.err{color:var(--bad)}
+details{color:var(--mut);font-size:13px}summary{padding:4px 0}
+.help{font-size:13px;color:var(--mut);line-height:1.6}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="logo"><i></i></div><div><h1>뮤뮤 링크</h1><p class="sub">PC 뮤뮤 화면을 휴대폰으로</p></div></div>
+  <div class="card">
+    <div><label for="code">PC 코드</label><input id="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+    <div><label for="pw">비밀번호</label><input id="pw" type="password" inputmode="numeric" placeholder="PC 프로그램 창에 나온 숫자"></div>
+    <details><summary>같은 와이파이 주소로 직접 연결 (선택)</summary>
+      <input id="direct" placeholder="예) 192.168.0.10:8770" autocomplete="off" spellcheck="false" style="margin-top:8px;font-size:16px;letter-spacing:0">
+    </details>
+    <label class="chk"><input type="checkbox" id="auto" checked>앱을 열면 자동으로 연결</label>
+    <button id="go">연결</button>
+  </div>
+  <div id="msg"></div>
+  <p class="help">PC에서 <b>실행.bat</b>을 켜면 PC 코드와 비밀번호가 나와요. 처음 한 번만 입력하면 돼요.</p>
+</main>
+<script>
+const $=s=>document.querySelector(s), A=window.App||{get:k=>localStorage.getItem(k)||'',set:(k,v)=>localStorage.setItem(k,v),resolve:()=>window.onResolved('','앱에서만 동작해요')};
+const code=$('#code'),pw=$('#pw'),direct=$('#direct'),auto=$('#auto'),go=$('#go'),msg=$('#msg');
+let busy=false,cancelled=false;
+function say(t,err){ msg.textContent=t; msg.className=err?'err':''; }
+function clean(c){ return c.toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function fmt(c){ return clean(c).replace(/(.{4})(?=.)/g,'$1-'); }
+code.value=fmt(A.get('code')); pw.value=A.get('pw'); direct.value=A.get('direct'); auto.checked=A.get('auto')!=='0';
+if(direct.value) document.querySelector('details').open=true;
+code.addEventListener('input',()=>{ const p=code.selectionStart===code.value.length; code.value=fmt(code.value); if(p) code.selectionStart=code.selectionEnd=code.value.length; });
+
+function goTo(url){ say('접속 중…'); location.href=url.replace(/\/+$/,'')+'/#pw='+encodeURIComponent(pw.value.trim()); }
+window.onResolved=(url,err)=>{
+  busy=false; go.disabled=false; go.textContent='연결';
+  if(cancelled) return;
+  if(url) return goTo(url);
+  say(err?'인터넷 연결을 확인해 주세요. ('+err+')':'PC를 찾지 못했어요. PC 프로그램이 켜져 있는지, PC 코드가 맞는지 확인해 주세요.',true);
+};
+function connect(){
+  const c=clean(code.value),p=pw.value.trim(),d=direct.value.trim();
+  if(!d&&c.length!==12) return say('PC 코드 12자리를 입력해 주세요.',true);
+  if(!p) return say('비밀번호를 입력해 주세요.',true);
+  A.set('code',c); A.set('pw',p); A.set('direct',d); A.set('auto',auto.checked?'1':'0');
+  cancelled=false;
+  if(d) return goTo(/^https?:\/\//.test(d)?d:'http://'+d);
+  busy=true; go.disabled=true; go.textContent='PC 찾는 중…'; say('PC 주소를 찾고 있어요…');
+  A.resolve(c);
+}
+go.onclick=connect;
+auto.onchange=()=>A.set('auto',auto.checked?'1':'0');
+if(location.hash==='#error') say('PC에 접속하지 못했어요. PC 프로그램이 켜져 있는지 확인하고 다시 연결해 주세요.',true);
+else if(location.hash===''&&auto.checked&&pw.value&&(clean(code.value).length===12||direct.value)) setTimeout(connect,200);
+</script>
+</body>
+</html>
