@@ -22,8 +22,22 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Signing key
+        env:
+          KS_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          KS_PW: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PW" ]; then
+            echo "::error::서명 키가 없어요. Settings > Secrets and variables > Actions 에 SIGNING_KEYSTORE_B64, SIGNING_PASSWORD 를 넣어 주세요."
+            exit 1
+          fi
+          echo "$KS_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/mumulink.p12"
+          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/mumulink.p12" >> "$GITHUB_ENV"
+
       - name: Build
         working-directory: android
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: gradle assembleDebug --no-daemon
 
       - name: Rename
