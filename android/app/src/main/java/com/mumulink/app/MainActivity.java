@@ -85,9 +85,11 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         String u = web.getUrl();
         if (u != null && !u.startsWith(LAUNCHER)) {
-            // 화면 보기 중이면 기기 목록으로, 기기 목록이면 앱 첫 화면으로
-            web.evaluateJavascript("(window.appBack && window.appBack()) ? 'y' : 'n'", r -> {
-                if (r == null || !r.contains("y")) web.loadUrl(LAUNCHER + "#home");
+            // 화면 보기 중 -> 기기 목록 / 기기 목록 -> 앱 첫 화면 / 매크로 화면 -> 기기 목록(이전 페이지)
+            web.evaluateJavascript("window.appBack ? (window.appBack() ? 'y' : 'n') : 'x'", r -> {
+                if (r != null && r.contains("y")) return;
+                if (r != null && r.contains("x") && web.canGoBack()) web.goBack();
+                else web.loadUrl(LAUNCHER + "#home");
             });
         } else {
             super.onBackPressed();
